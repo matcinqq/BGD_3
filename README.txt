@@ -1,26 +1,31 @@
-Big Data Pipeline (Spark + MovieLens 32M)
+MovieLens Spark Pipeline
 
-The program downloads a dataset of movie reviews
-URL: https://files.grouplens.org/datasets/movielens/ml-32m.zip
-On subsequent runs, if the data files are present, it does not download them again.
-Files are downloaded and later unpacked in /data/source
+Simple Spark medallion pipeline built on MovieLens 32M.
 
-We Builds medallion layers with Spark:
-    bronze - pretty much raw data, here we read the .csv files, 
-    ensure proper types and add an ingestion timestamp ("ingested_at")
+Dataset:
+- https://files.grouplens.org/datasets/movielens/ml-32m.zip
 
-    silver - joins movies and ratings, ensures propper range in ratings (0.5 to 5)
-    and converts unix time to date time. 
+What this pipeline does:
+1. Checks java (needed by Spark).
+2. Downloads MovieLens 32M to data/source/ if files are missing.
+3. Runs 3 layers:
+   - Bronze: typed raw tables (ratings, movies)
+   - Silver: ratings joined with movie metadata + valid rating filter (0.5 to 5.0)
+   - Gold: daily movie stats (count, avg, min, max)
+4. Writes parquet outputs to data/medallion/.
 
-    gold - aggregates. Groups silver data by
-        rating_date
-        movie_id
-        min_rating
-        max_rating
-    
-The parquet outputs are saved to data/medallion
+Main files:
+- run_pipeline.py - entry point
+- src/movielens_pipeline/config.py - project paths and dataset URL
+- src/movielens_pipeline/java_env.py -java detection 
+- src/movielens_pipeline/dataset.py - download + extract
+- src/movielens_pipeline/spark_pipeline.py - spark transformations
+- bgd_diagram.png- architecture diagram
 
-The program requires Java 21+ (set JAVA_HOME if not auto-detected)
+Requirements:
+- Python 3.11+
+- Java 21+ 
+- PySpark
 
-Architecture diagram:
-docs/pipeline_architecture.mmd
+Run:
+  - python run_pipeline.py
