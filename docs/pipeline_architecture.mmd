@@ -1,0 +1,9 @@
+flowchart LR
+    A["Source: MovieLens 32M (CSV)"] --> B["Trigger (Airflow/local)"]
+    B --> C["Queue IN"]
+    C --> D["Spark Read + Type Casting"]
+    D --> E["Bronze"]
+    E --> F["Silver"]
+    F --> G["Gold"]
+    G --> H["Queue OUT"]
+    H --> I["Parquet Sink (medallion)"]

@@ -17,6 +17,8 @@ def check_metrics(metrics):
         "bronze_movies_rows",
         "silver_rows",
         "gold_rows",
+        "queue_push_count",
+        "queue_pop_count",
     )
 
     for key in required_keys:

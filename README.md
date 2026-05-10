@@ -10,6 +10,8 @@ Prosty pipeline danych oparty o **MovieLens 32M** i architekturę **Bronze / Sil
 | Silver | Join ocen z metadanymi filmów + filtr poprawnych ocen (0.5–5.0) | `ratings_enriched` |
 | Gold | Agregacje dzienne per film (count, avg, min, max) | `movie_daily_metrics` |
 
+Przepływ danych jest uruchamiany automatycznie przez trigger (np. Airflow), a wejście/wyjście pipeline przechodzi przez kolejkę (`in` / `out`).
+
 ## Struktura
 
 - `run_pipeline.py` — entrypoint
@@ -17,6 +19,9 @@ Prosty pipeline danych oparty o **MovieLens 32M** i architekturę **Bronze / Sil
 - `src/movielens_pipeline/spark_pipeline.py` — transformacje Spark
 - `src/movielens_pipeline/quality_checks.py` — podstawowe kontrole jakości
 - `src/movielens_pipeline/dataset.py` — pobranie i rozpakowanie danych
+- `src/movielens_pipeline/trigger.py` — kontekst triggera (Airflow/local)
+- `src/movielens_pipeline/queueing.py` — kolejka transportowa dla ruchu `in/out`
+- `docs/pipeline_architecture.mmd` — diagram architektury
 
 ## Uruchomienie
 
