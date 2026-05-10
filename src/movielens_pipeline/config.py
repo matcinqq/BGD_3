@@ -1,11 +1,9 @@
 from pathlib import Path
 
-"""
-Configuration module for the MovieLens Spark medallion pipeline.
-Defines default dataset URL and path building.
-"""
-
 DEFAULT_DATASET_URL = "https://files.grouplens.org/datasets/movielens/ml-32m.zip"
+APP_NAME = "movielens-medallion-spark"
+MIN_VALID_RATING = 0.5
+MAX_VALID_RATING = 5.0
 
 
 def build_paths(project_root):

@@ -1,11 +1,6 @@
 from urllib.request import urlretrieve
 import zipfile
 
-"""
-Dataset handling module.
-Checks for the dataset and downloads/extracts it if necessary.
-"""
-
 def ensure_movielens_dataset(paths, dataset_url):
     ratings_csv = paths["ratings_csv"]
     movies_csv = paths["movies_csv"]
