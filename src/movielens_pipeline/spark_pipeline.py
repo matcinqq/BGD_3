@@ -81,11 +81,38 @@ def write_layers(paths, bronze_ratings, bronze_movies, silver_ratings, gold_metr
 
 
 def collect_metrics(source_ratings, source_movies, bronze_ratings, bronze_movies, silver_ratings, gold_metrics):
+    # Basic row counts per layer.
+    source_ratings_rows = source_ratings.count()
+    source_movies_rows = source_movies.count()
+    bronze_ratings_rows = bronze_ratings.count()
+    bronze_movies_rows = bronze_movies.count()
+    silver_rows = silver_ratings.count()
+    gold_rows = gold_metrics.count()
+
+    non_null_rating_rows = bronze_ratings.where(F.col("rating").isNotNull()).count()
+    valid_rating_rows = bronze_ratings.where(
+        (F.col("rating") >= F.lit(MIN_VALID_RATING)) & (F.col("rating") <= F.lit(MAX_VALID_RATING))
+    ).count()
+    # movies are deduped in Bronze, so this should stay at 100%.
+    unique_movie_ids = bronze_movies.select("movie_id").distinct().count()
+
+    # Freshness based on latest ingested_at in Bronze.
+    freshness_seconds = bronze_ratings.agg(
+        (
+            F.unix_timestamp(F.current_timestamp()) - F.unix_timestamp(F.max("ingested_at"))
+        ).alias("freshness_seconds")
+    ).first()["freshness_seconds"]
+    freshness_hours = None if freshness_seconds is None else round(float(freshness_seconds) / 3600.0, 6)
+
     return {
-        "source_ratings_rows": source_ratings.count(),
-        "source_movies_rows": source_movies.count(),
-        "bronze_ratings_rows": bronze_ratings.count(),
-        "bronze_movies_rows": bronze_movies.count(),
-        "silver_rows": silver_ratings.count(),
-        "gold_rows": gold_metrics.count(),
+        "source_ratings_rows": source_ratings_rows,
+        "source_movies_rows": source_movies_rows,
+        "bronze_ratings_rows": bronze_ratings_rows,
+        "bronze_movies_rows": bronze_movies_rows,
+        "silver_rows": silver_rows,
+        "gold_rows": gold_rows,
+        "dq_completeness_rating_pct": round((non_null_rating_rows / bronze_ratings_rows) * 100.0, 6),
+        "dq_uniqueness_movie_id_pct": round((unique_movie_ids / bronze_movies_rows) * 100.0, 6),
+        "dq_valid_rating_range_pct": round((valid_rating_rows / bronze_ratings_rows) * 100.0, 6),
+        "dq_freshness_hours": freshness_hours,
     }

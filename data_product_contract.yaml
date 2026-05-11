@@ -1,0 +1,137 @@
+product:
+  name: "MovieLens Daily Rating Metrics"
+  owner: "Marcin Hyla"
+  purpose: "Udostępnienie dziennych metryk ocen filmów (count/avg/min/max) do analiz trendów i popularności filmów."
+  refresh_frequency: "On demand (manual trigger) / every pipeline run"
+  access_method:
+    type: "Parquet files in local medallion layout"
+    run_command: "python run_pipeline.py"
+    output_paths:
+      bronze_ratings: "data/medallion/bronze/ratings"
+      bronze_movies: "data/medallion/bronze/movies"
+      silver_ratings_enriched: "data/medallion/silver/ratings_enriched"
+      gold_movie_daily_metrics: "data/medallion/gold/movie_daily_metrics"
+
+sources:
+  - name: "MovieLens 32M"
+    url: "https://files.grouplens.org/datasets/movielens/ml-32m.zip"
+    files:
+      - "ratings.csv"
+      - "movies.csv"
+
+schemas:
+  - layer: "bronze_ratings"
+    description: "Surowe oceny po typowaniu pól."
+    columns:
+      - name: "user_id"
+        type: "long"
+        description: "Id użytkownika."
+      - name: "movie_id"
+        type: "long"
+        description: "Id filmu."
+      - name: "rating"
+        type: "double"
+        description: "Ocena filmu (0.5-5.0)."
+      - name: "rating_ts"
+        type: "long"
+        description: "Unix timestamp oceny."
+      - name: "rated_at"
+        type: "timestamp"
+        description: "Czas oceny jako timestamp."
+      - name: "ingested_at"
+        type: "timestamp"
+        description: "Czas załadowania rekordu do pipeline."
+
+  - layer: "silver_ratings_enriched"
+    description: "Oceny wzbogacone o metadane filmu i datę oceny."
+    columns:
+      - name: "movie_id"
+        type: "long"
+        description: "Id filmu."
+      - name: "user_id"
+        type: "long"
+        description: "Id użytkownika."
+      - name: "rating"
+        type: "double"
+        description: "Ocena po walidacji zakresu."
+      - name: "rating_ts"
+        type: "long"
+        description: "Unix timestamp oceny."
+      - name: "rated_at"
+        type: "timestamp"
+        description: "Timestamp oceny."
+      - name: "ingested_at"
+        type: "timestamp"
+        description: "Timestamp załadowania danych."
+      - name: "title"
+        type: "string"
+        description: "Tytuł filmu."
+      - name: "genres"
+        type: "string"
+        description: "Gatunki filmu."
+      - name: "rating_date"
+        type: "date"
+        description: "Data oceny (dzień)."
+
+  - layer: "gold_movie_daily_metrics"
+    description: "Docelowy produkt danych: agregaty dzienne per film."
+    columns:
+      - name: "rating_date"
+        type: "date"
+        description: "Dzień, dla którego policzono metryki."
+      - name: "movie_id"
+        type: "long"
+        description: "Id filmu."
+      - name: "title"
+        type: "string"
+        description: "Tytuł filmu."
+      - name: "ratings_count"
+        type: "long"
+        description: "Liczba ocen w danym dniu."
+      - name: "avg_rating"
+        type: "double"
+        description: "Średnia ocena filmu w danym dniu."
+      - name: "min_rating"
+        type: "double"
+        description: "Minimalna ocena filmu w danym dniu."
+      - name: "max_rating"
+        type: "double"
+        description: "Maksymalna ocena filmu w danym dniu."
+
+quality_metrics:
+  measured_at: "2026-05-10"
+  cadence: "Every pipeline run"
+  metrics:
+    - name: "dq_completeness_rating_pct"
+      definition: "% rekordów w bronze_ratings z niepustą wartością rating."
+      current_value: 100.0
+      expected_threshold: ">= 99.0"
+    - name: "dq_uniqueness_movie_id_pct"
+      definition: "% unikalnych movie_id w bronze_movies po deduplikacji."
+      current_value: 100.0
+      expected_threshold: "= 100.0"
+    - name: "dq_valid_rating_range_pct"
+      definition: "% rekordów w bronze_ratings z rating w zakresie 0.5-5.0."
+      current_value: 100.0
+      expected_threshold: ">= 99.0"
+    - name: "dq_freshness_hours"
+      definition: "Różnica czasu (w godzinach) między teraz a max(ingested_at) w bronze_ratings."
+      current_value: 0.0
+      expected_threshold: "<= 24.0"
+
+known_limitations:
+  - "Pipeline działa lokalnie i wymaga Spark + Java."
+  - "Warstwy parquet są zapisywane w trybie overwrite (brak pełnej historii wersji)."
+  - "Brak osobnego silnika harmonogramu w repo (można uruchamiać z Airflow przez trigger env)."
+
+example_usage:
+  python: |
+    from pyspark.sql import SparkSession
+    spark = SparkSession.builder.master("local[2]").appName("read-gold").getOrCreate()
+    df = spark.read.parquet("data/medallion/gold/movie_daily_metrics")
+    df.orderBy("rating_date", ascending=False).show(20, truncate=False)
+  sql: |
+    SELECT rating_date, title, avg_rating, ratings_count
+    FROM gold_movie_daily_metrics
+    ORDER BY rating_date DESC, ratings_count DESC
+    LIMIT 20;

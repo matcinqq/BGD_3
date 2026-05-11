@@ -22,6 +22,10 @@ Przepływ danych jest uruchamiany automatycznie przez trigger (np. Airflow), a w
 - `src/movielens_pipeline/trigger.py` — kontekst triggera (Airflow/local)
 - `src/movielens_pipeline/queueing.py` — kolejka transportowa dla ruchu `in/out`
 - `docs/pipeline_architecture.mmd` — diagram architektury
+- `docs/quality_metrics.md` — metryki jakości produktu danych
+- `data_product_contract.yaml` — kontrakt/specyfikacja produktu danych
+- `docs/data_product_card.md` — karta produktu do MS Teams Marketplace
+- `docs/teams_submission_checklist.md` — checklista publikacji w Teams
 
 ## Uruchomienie
 
